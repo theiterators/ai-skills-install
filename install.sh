@@ -100,21 +100,26 @@ cmd_init() {
 
   write_version_marker "$selected"
 
-  # Offer Jira token setup
+  # Offer Jira credentials setup
   echo ""
-  if [ -f "$IT_DIR/.env" ] && grep -q "JIRA_API_TOKEN" "$IT_DIR/.env" 2>/dev/null; then
-    echo "Jira token: already configured in ~/.iterators/.env"
-  elif ask_yn "Set up Jira API token now?" "n"; then
+  local env_file="$IT_DIR/.env"
+  if [ -f "$env_file" ] && grep -q "JIRA_EMAIL" "$env_file" 2>/dev/null && grep -q "JIRA_API_TOKEN" "$env_file" 2>/dev/null; then
+    echo "Jira credentials: already configured in ~/.iterators/.env"
+  elif ask_yn "Set up Jira credentials now?" "n"; then
+    mkdir -p "$IT_DIR"
+    echo ""
+    printf "  Your Jira email: "
+    read -r jira_email
     echo ""
     echo "  Get your token at: https://id.atlassian.com/manage-profile/security/api-tokens"
     echo ""
     printf "  Paste your Jira API token: "
-    read -r token
-    if [ -n "$token" ]; then
-      mkdir -p "$IT_DIR"
-      echo "JIRA_API_TOKEN=$token" > "$IT_DIR/.env"
-      chmod 600 "$IT_DIR/.env"
-      echo "  [+] Token saved to ~/.iterators/.env"
+    read -r jira_token
+    if [ -n "$jira_email" ] && [ -n "$jira_token" ]; then
+      echo "JIRA_EMAIL=$jira_email" > "$env_file"
+      echo "JIRA_API_TOKEN=$jira_token" >> "$env_file"
+      chmod 600 "$env_file"
+      echo "  [+] Credentials saved to ~/.iterators/.env"
     else
       echo "  Skipped — you can set it later with /it-setup"
     fi
@@ -191,14 +196,18 @@ cmd_doctor() {
   fi
 
   echo ""
-  echo "Checking Jira token..."
-  if [ -n "${JIRA_API_TOKEN:-}" ]; then
-    echo "  [ok] JIRA_API_TOKEN is set (environment)"
-  elif [ -f "$IT_DIR/.env" ] && grep -q "JIRA_API_TOKEN" "$IT_DIR/.env" 2>/dev/null; then
+  echo "Checking Jira credentials..."
+  local env_file="$IT_DIR/.env"
+  if [ -f "$env_file" ] && grep -q "JIRA_EMAIL" "$env_file" 2>/dev/null; then
+    echo "  [ok] JIRA_EMAIL found in ~/.iterators/.env"
+  else
+    echo "  [!!] JIRA_EMAIL not found"
+    ((issues++)) || true
+  fi
+  if [ -f "$env_file" ] && grep -q "JIRA_API_TOKEN" "$env_file" 2>/dev/null; then
     echo "  [ok] JIRA_API_TOKEN found in ~/.iterators/.env"
   else
     echo "  [!!] JIRA_API_TOKEN not found"
-    echo "       Run install.sh init or /it-setup to configure"
     ((issues++)) || true
   fi
 

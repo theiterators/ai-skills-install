@@ -93,20 +93,22 @@ function Invoke-Init {
 
     Write-VersionMarker -Tools ($selected -join ",")
 
-    # Offer Jira token setup
+    # Offer Jira credentials setup
     Write-Host ""
     $envFile = Join-Path $ItDir ".env"
-    if ((Test-Path $envFile) -and (Select-String -Path $envFile -Pattern "JIRA_API_TOKEN" -Quiet)) {
-        Write-Host "Jira token: already configured in ~/.iterators/.env"
-    } elseif (Ask-YN "Set up Jira API token now?") {
+    if ((Test-Path $envFile) -and (Select-String -Path $envFile -Pattern "JIRA_EMAIL" -Quiet) -and (Select-String -Path $envFile -Pattern "JIRA_API_TOKEN" -Quiet)) {
+        Write-Host "Jira credentials: already configured in ~/.iterators/.env"
+    } elseif (Ask-YN "Set up Jira credentials now?") {
+        Write-Host ""
+        $jiraEmail = Read-Host "  Your Jira email"
         Write-Host ""
         Write-Host "  Get your token at: https://id.atlassian.com/manage-profile/security/api-tokens"
         Write-Host ""
-        $token = Read-Host "  Paste your Jira API token"
-        if ($token) {
+        $jiraToken = Read-Host "  Paste your Jira API token"
+        if ($jiraEmail -and $jiraToken) {
             New-Item -ItemType Directory -Path $ItDir -Force | Out-Null
-            Set-Content -Path $envFile -Value "JIRA_API_TOKEN=$token"
-            Write-Host "  [+] Token saved to ~/.iterators/.env"
+            Set-Content -Path $envFile -Value "JIRA_EMAIL=$jiraEmail`nJIRA_API_TOKEN=$jiraToken"
+            Write-Host "  [+] Credentials saved to ~/.iterators/.env"
         } else {
             Write-Host "  Skipped - you can set it later with /it-setup"
         }
