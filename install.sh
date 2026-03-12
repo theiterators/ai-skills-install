@@ -100,6 +100,26 @@ cmd_init() {
 
   write_version_marker "$selected"
 
+  # Offer Jira token setup
+  echo ""
+  if [ -f "$IT_DIR/.env" ] && grep -q "JIRA_API_TOKEN" "$IT_DIR/.env" 2>/dev/null; then
+    echo "Jira token: already configured in ~/.iterators/.env"
+  elif ask_yn "Set up Jira API token now?" "n"; then
+    echo ""
+    echo "  Get your token at: https://id.atlassian.com/manage-profile/security/api-tokens"
+    echo ""
+    printf "  Paste your Jira API token: "
+    read -r token
+    if [ -n "$token" ]; then
+      mkdir -p "$IT_DIR"
+      echo "JIRA_API_TOKEN=$token" > "$IT_DIR/.env"
+      chmod 600 "$IT_DIR/.env"
+      echo "  [+] Token saved to ~/.iterators/.env"
+    else
+      echo "  Skipped — you can set it later with /it-setup"
+    fi
+  fi
+
   echo ""
   echo "--- Done! ---"
   echo "Tools: $selected"
@@ -171,11 +191,14 @@ cmd_doctor() {
   fi
 
   echo ""
-  echo "Checking environment..."
+  echo "Checking Jira token..."
   if [ -n "${JIRA_API_TOKEN:-}" ]; then
-    echo "  [ok] JIRA_API_TOKEN is set"
+    echo "  [ok] JIRA_API_TOKEN is set (environment)"
+  elif [ -f "$IT_DIR/.env" ] && grep -q "JIRA_API_TOKEN" "$IT_DIR/.env" 2>/dev/null; then
+    echo "  [ok] JIRA_API_TOKEN found in ~/.iterators/.env"
   else
-    echo "  [!!] JIRA_API_TOKEN is not set"
+    echo "  [!!] JIRA_API_TOKEN not found"
+    echo "       Run install.sh init or /it-setup to configure"
     ((issues++)) || true
   fi
 

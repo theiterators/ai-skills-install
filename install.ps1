@@ -93,6 +93,26 @@ function Invoke-Init {
 
     Write-VersionMarker -Tools ($selected -join ",")
 
+    # Offer Jira token setup
+    Write-Host ""
+    $envFile = Join-Path $ItDir ".env"
+    if ((Test-Path $envFile) -and (Select-String -Path $envFile -Pattern "JIRA_API_TOKEN" -Quiet)) {
+        Write-Host "Jira token: already configured in ~/.iterators/.env"
+    } elseif (Ask-YN "Set up Jira API token now?") {
+        Write-Host ""
+        Write-Host "  Get your token at: https://id.atlassian.com/manage-profile/security/api-tokens"
+        Write-Host ""
+        $token = Read-Host "  Paste your Jira API token"
+        if ($token) {
+            New-Item -ItemType Directory -Path $ItDir -Force | Out-Null
+            Set-Content -Path $envFile -Value "JIRA_API_TOKEN=$token"
+            Write-Host "  [+] Token saved to ~/.iterators/.env"
+        } else {
+            Write-Host "  Skipped - you can set it later with /it-setup"
+        }
+    }
+
+    Write-Host ""
     Write-Host "--- Done! ---"
     Write-Host "Tools: $($selected -join ', ')"
     Write-Host ""
@@ -164,11 +184,15 @@ function Invoke-Doctor {
     }
 
     Write-Host ""
-    Write-Host "Checking environment..."
+    Write-Host "Checking Jira token..."
+    $envFile = Join-Path $ItDir ".env"
     if ($env:JIRA_API_TOKEN) {
-        Write-Host "  [ok] JIRA_API_TOKEN is set"
+        Write-Host "  [ok] JIRA_API_TOKEN is set (environment)"
+    } elseif ((Test-Path $envFile) -and (Select-String -Path $envFile -Pattern "JIRA_API_TOKEN" -Quiet)) {
+        Write-Host "  [ok] JIRA_API_TOKEN found in ~/.iterators/.env"
     } else {
-        Write-Host "  [!!] JIRA_API_TOKEN is not set"
+        Write-Host "  [!!] JIRA_API_TOKEN not found"
+        Write-Host "       Run install.ps1 init or /it-setup to configure"
         $issues++
     }
 
