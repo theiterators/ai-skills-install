@@ -226,6 +226,7 @@ tool_dir_for() {
     claude)  echo "$BASE_DIR/.claude" ;;
     copilot) echo "$BASE_DIR/.github/copilot" ;;
     cursor)  echo "$BASE_DIR/.cursor" ;;
+    codex)   echo "$BASE_DIR/.agents" ;;
   esac
 }
 
@@ -235,6 +236,7 @@ tool_key_at() {
     0) echo "claude" ;;
     1) echo "copilot" ;;
     2) echo "cursor" ;;
+    3) echo "codex" ;;
   esac
 }
 
@@ -244,6 +246,7 @@ tool_name_at() {
     0) echo "Claude Code" ;;
     1) echo "GitHub Copilot" ;;
     2) echo "Cursor" ;;
+    3) echo "Codex" ;;
   esac
 }
 
@@ -302,7 +305,8 @@ cmd_init() {
   checkbox_select tool_selection "Which tools do you use?" \
     "Claude Code" \
     "GitHub Copilot" \
-    "Cursor"
+    "Cursor" \
+    "Codex"
 
   if [ -z "$tool_selection" ]; then
     echo ""
@@ -409,6 +413,7 @@ cmd_update() {
         claude)  copy_to_tool "Claude Code" "$dir" ;;
         copilot) copy_to_tool "GitHub Copilot" "$dir" ;;
         cursor)  copy_to_tool "Cursor" "$dir" ;;
+        codex)   copy_to_tool "Codex" "$dir" ;;
         *)       warn "Unknown tool: $tool, skipping." ;;
       esac
     else

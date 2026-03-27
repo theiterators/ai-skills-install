@@ -70,6 +70,7 @@ function Get-ToolDir {
         "claude"  { return Join-Path $script:BaseDir ".claude" }
         "copilot" { return Join-Path $script:BaseDir ".github\copilot" }
         "cursor"  { return Join-Path $script:BaseDir ".cursor" }
+        "codex"   { return Join-Path $script:BaseDir ".agents" }
     }
 }
 
@@ -128,7 +129,8 @@ function Invoke-Init {
     $tools = @(
         @{ key = "claude";  name = "Claude Code" },
         @{ key = "copilot"; name = "GitHub Copilot" },
-        @{ key = "cursor";  name = "Cursor" }
+        @{ key = "cursor";  name = "Cursor" },
+        @{ key = "codex";   name = "Codex" }
     )
 
     foreach ($tool in $tools) {
@@ -213,6 +215,7 @@ function Invoke-Update {
                 "claude"  { "Claude Code" }
                 "copilot" { "GitHub Copilot" }
                 "cursor"  { "Cursor" }
+                "codex"   { "Codex" }
                 default   { $null }
             }
             if ($toolName) {
