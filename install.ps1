@@ -3,9 +3,12 @@ $ErrorActionPreference = "Stop"
 $Repo = "theiterators/ai-skills"
 $TmpDir = Join-Path $env:TEMP "ai-skills-$PID"
 $HomeDir = $env:USERPROFILE
-$ItDir = Join-Path $HomeDir ".iterators"
-$VersionFile = Join-Path $ItDir "ai-skills-version.json"
 $Command = if ($args.Count -gt 0) { $args[0] } else { "init" }
+
+# Scope-dependent variables (set by Resolve-Scope)
+$script:BaseDir = $null
+$script:ItDir = $null
+$script:VersionFile = $null
 
 function Show-Banner {
     Write-Host ""
@@ -50,21 +53,72 @@ function Ask-YN {
     return $answer -match "^[Yy]"
 }
 
+function Resolve-Scope {
+    param([string]$Scope)
+    if ($Scope -eq "project") {
+        $script:BaseDir = (Get-Location).Path
+    } else {
+        $script:BaseDir = $HomeDir
+    }
+    $script:ItDir = Join-Path $script:BaseDir ".iterators"
+    $script:VersionFile = Join-Path $script:ItDir "ai-skills-version.json"
+}
+
+function Get-ToolDir {
+    param([string]$Tool)
+    switch ($Tool) {
+        "claude"  { return Join-Path $script:BaseDir ".claude" }
+        "copilot" { return Join-Path $script:BaseDir ".github\copilot" }
+        "cursor"  { return Join-Path $script:BaseDir ".cursor" }
+    }
+}
+
 function Write-VersionMarker {
-    param([string]$Tools)
-    New-Item -ItemType Directory -Path $ItDir -Force | Out-Null
-    $pkg = Get-Content (Join-Path $TmpDir "package.json") -Raw | ConvertFrom-Json
-    $version = if ($pkg.version) { $pkg.version } else { "unknown" }
+    param([string]$Tools, [string]$Scope)
+    New-Item -ItemType Directory -Path $script:ItDir -Force | Out-Null
+    $pkgPath = Join-Path $TmpDir "package.json"
+    $version = "unknown"
+    if (Test-Path $pkgPath) {
+        $pkg = Get-Content $pkgPath -Raw | ConvertFrom-Json
+        if ($pkg.version) { $version = $pkg.version }
+    }
     $marker = @{
         version = $version
         installedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
         tools = $Tools
+        scope = $Scope
     } | ConvertTo-Json
-    Set-Content -Path $VersionFile -Value $marker
+    Set-Content -Path $script:VersionFile -Value $marker
+}
+
+function Detect-Scope {
+    # Per-project version file takes priority
+    $projectVf = Join-Path (Get-Location).Path ".iterators\ai-skills-version.json"
+    $globalVf = Join-Path $HomeDir ".iterators\ai-skills-version.json"
+
+    if (Test-Path $projectVf) {
+        Resolve-Scope "project"
+        return $true
+    } elseif (Test-Path $globalVf) {
+        Resolve-Scope "global"
+        return $true
+    }
+    return $false
 }
 
 function Invoke-Init {
     Show-Banner
+    Write-Host "Where do you want to install skills?"
+    Write-Host ""
+    Write-Host "  1) Globally     - into ~/  (available in all projects)"
+    Write-Host "  2) Per-project  - into current directory ($(Get-Location))"
+    Write-Host ""
+    $scopeChoice = Read-Host "Choose [1/2]"
+
+    $scope = if ($scopeChoice -eq "2") { "project" } else { "global" }
+    Resolve-Scope $scope
+
+    Write-Host ""
     Write-Host "Downloading latest skills..."
     Clone-Repo
     Write-Host ""
@@ -72,14 +126,14 @@ function Invoke-Init {
     $selected = @()
 
     $tools = @(
-        @{ key = "claude";  name = "Claude Code";     dir = Join-Path $HomeDir ".claude" },
-        @{ key = "copilot"; name = "GitHub Copilot";   dir = Join-Path $HomeDir ".github\copilot" },
-        @{ key = "cursor";  name = "Cursor";           dir = Join-Path $HomeDir ".cursor" }
+        @{ key = "claude";  name = "Claude Code" },
+        @{ key = "copilot"; name = "GitHub Copilot" },
+        @{ key = "cursor";  name = "Cursor" }
     )
 
     foreach ($tool in $tools) {
         if (Ask-YN "Install for $($tool.name)?") {
-            Copy-ToTool -ToolName $tool.name -ToolDir $tool.dir
+            Copy-ToTool -ToolName $tool.name -ToolDir (Get-ToolDir $tool.key)
             $selected += $tool.key
         }
         Write-Host ""
@@ -91,14 +145,16 @@ function Invoke-Init {
         return
     }
 
-    Write-VersionMarker -Tools ($selected -join ",")
+    Write-VersionMarker -Tools ($selected -join ",") -Scope $scope
 
-    # Offer Jira credentials setup
+    # Offer Jira credentials setup (always in home dir)
     Write-Host ""
-    $envFile = Join-Path $ItDir ".env"
+    $credDir = Join-Path $HomeDir ".iterators"
+    $envFile = Join-Path $credDir ".env"
     if ((Test-Path $envFile) -and (Select-String -Path $envFile -Pattern "JIRA_EMAIL" -Quiet) -and (Select-String -Path $envFile -Pattern "JIRA_API_TOKEN" -Quiet)) {
         Write-Host "Jira credentials: already configured in ~/.iterators/.env"
     } elseif (Ask-YN "Set up Jira credentials now?") {
+        New-Item -ItemType Directory -Path $credDir -Force | Out-Null
         Write-Host ""
         $jiraEmail = Read-Host "  Your Jira email"
         Write-Host ""
@@ -106,7 +162,6 @@ function Invoke-Init {
         Write-Host ""
         $jiraToken = Read-Host "  Paste your Jira API token"
         if ($jiraEmail -and $jiraToken) {
-            New-Item -ItemType Directory -Path $ItDir -Force | Out-Null
             Set-Content -Path $envFile -Value "JIRA_EMAIL=$jiraEmail`nJIRA_API_TOKEN=$jiraToken"
             Write-Host "  [+] Credentials saved to ~/.iterators/.env"
         } else {
@@ -116,7 +171,17 @@ function Invoke-Init {
 
     Write-Host ""
     Write-Host "--- Done! ---"
+    Write-Host "Scope: $scope"
     Write-Host "Tools: $($selected -join ', ')"
+
+    if ($scope -eq "project") {
+        Write-Host ""
+        Write-Host "NOTE: Skills installed into $(Get-Location)"
+        Write-Host "  You need to run this installer from your project directory."
+        Write-Host "  To update, run this script with 'update' from the same directory."
+        Write-Host "  Consider adding the installed directories to .gitignore or committing them."
+    }
+
     Write-Host ""
     Write-Host "Next: run /it-setup in your project to configure Jira."
 
@@ -126,33 +191,41 @@ function Invoke-Init {
 function Invoke-Update {
     Show-Banner
 
-    if (-not (Test-Path $VersionFile)) {
-        Write-Error "No previous installation found. Run 'init' first."
+    if (-not (Detect-Scope)) {
+        Write-Error "No previous installation found. Run 'init' first, or cd into a project with a per-project install."
         exit 1
     }
 
-    $marker = Get-Content $VersionFile -Raw | ConvertFrom-Json
+    $marker = Get-Content $script:VersionFile -Raw | ConvertFrom-Json
+    $scope = if ($marker.scope) { $marker.scope } else { "global" }
     $tools = $marker.tools -split ","
+
+    Write-Host "Scope: $scope"
     Write-Host "Previous tools: $($marker.tools)"
     Write-Host "Downloading latest skills..."
     Clone-Repo
     Write-Host ""
 
-    $toolMap = @{
-        claude  = @{ name = "Claude Code";   dir = Join-Path $HomeDir ".claude" }
-        copilot = @{ name = "GitHub Copilot"; dir = Join-Path $HomeDir ".github\copilot" }
-        cursor  = @{ name = "Cursor";         dir = Join-Path $HomeDir ".cursor" }
-    }
-
     foreach ($t in $tools) {
-        if ($toolMap.ContainsKey($t)) {
-            Copy-ToTool -ToolName $toolMap[$t].name -ToolDir $toolMap[$t].dir
+        $dir = Get-ToolDir $t
+        if ($dir) {
+            $toolName = switch ($t) {
+                "claude"  { "Claude Code" }
+                "copilot" { "GitHub Copilot" }
+                "cursor"  { "Cursor" }
+                default   { $null }
+            }
+            if ($toolName) {
+                Copy-ToTool -ToolName $toolName -ToolDir $dir
+            } else {
+                Write-Host "  [!] Unknown tool: $t, skipping."
+            }
         } else {
             Write-Host "  [!] Unknown tool: $t, skipping."
         }
     }
 
-    Write-VersionMarker -Tools $marker.tools
+    Write-VersionMarker -Tools $marker.tools -Scope $scope
     Write-Host ""
     Write-Host "--- Updated! ---"
 
@@ -163,10 +236,21 @@ function Invoke-Doctor {
     Show-Banner
     $issues = 0
 
+    if (-not (Detect-Scope)) {
+        Write-Host "No installation found (checked current directory and global)."
+        Write-Host "Run 'install.ps1' first."
+        exit 1
+    }
+
+    $marker = Get-Content $script:VersionFile -Raw | ConvertFrom-Json
+    $scope = if ($marker.scope) { $marker.scope } else { "global" }
+    Write-Host "Scope: $scope (base: $script:BaseDir)"
+    Write-Host ""
+
     Write-Host "Checking skills..."
     $skills = @("it-brainstorming", "it-start-task", "it-code-review", "it-setup")
     foreach ($skill in $skills) {
-        $dir = Join-Path $HomeDir ".claude\skills\$skill"
+        $dir = Join-Path $script:BaseDir ".claude\skills\$skill"
         if (Test-Path $dir) {
             Write-Host "  [ok] $skill"
         } else {
@@ -176,18 +260,26 @@ function Invoke-Doctor {
     }
 
     Write-Host ""
-    Write-Host "Checking jira.sh..."
-    $jiraPath = Join-Path $HomeDir ".claude\scripts\jira.sh"
+    Write-Host "Checking jira scripts..."
+    $jiraPath = Join-Path $script:BaseDir ".claude\scripts\jira.sh"
     if (Test-Path $jiraPath) {
         Write-Host "  [ok] $jiraPath"
     } else {
         Write-Host "  [!!] $jiraPath - not found"
         $issues++
     }
+    $jiraPsPath = Join-Path $script:BaseDir ".claude\scripts\jira.ps1"
+    if (Test-Path $jiraPsPath) {
+        Write-Host "  [ok] $jiraPsPath"
+    } else {
+        Write-Host "  [!!] $jiraPsPath - not found"
+        $issues++
+    }
 
     Write-Host ""
-    Write-Host "Checking Jira token..."
-    $envFile = Join-Path $ItDir ".env"
+    Write-Host "Checking Jira credentials..."
+    $credDir = Join-Path $HomeDir ".iterators"
+    $envFile = Join-Path $credDir ".env"
     if ($env:JIRA_API_TOKEN) {
         Write-Host "  [ok] JIRA_API_TOKEN is set (environment)"
     } elseif ((Test-Path $envFile) -and (Select-String -Path $envFile -Pattern "JIRA_API_TOKEN" -Quiet)) {
@@ -197,11 +289,17 @@ function Invoke-Doctor {
         Write-Host "       Run install.ps1 init or /it-setup to configure"
         $issues++
     }
+    if ((Test-Path $envFile) -and (Select-String -Path $envFile -Pattern "JIRA_EMAIL" -Quiet)) {
+        Write-Host "  [ok] JIRA_EMAIL found in ~/.iterators/.env"
+    } else {
+        Write-Host "  [!!] JIRA_EMAIL not found"
+        $issues++
+    }
 
     Write-Host ""
     Write-Host "Version marker..."
-    if (Test-Path $VersionFile) {
-        Get-Content $VersionFile
+    if (Test-Path $script:VersionFile) {
+        Get-Content $script:VersionFile
     } else {
         Write-Host "  [!!] No version marker found"
         $issues++
