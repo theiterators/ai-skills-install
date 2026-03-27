@@ -13,17 +13,16 @@ RESET='\033[0m'
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 WHITE='\033[1;37m'
-BG_BLUE='\033[44m'
-BG_GREEN='\033[42m'
+BG_IT='\033[48;2;238;127;49m'  # Iterators orange background
+FG_IT='\033[38;2;238;127;49m' # Iterators orange foreground
 
 ok()   { printf "  ${GREEN}[ok]${RESET} %s\n" "$1"; }
 fail() { printf "  ${RED}[!!]${RESET} %s\n" "$1"; }
 info() { printf "  ${CYAN}[+]${RESET} %s\n" "$1"; }
 warn() { printf "  ${YELLOW}[!]${RESET} %s\n" "$1"; }
-step() { printf "\n${BOLD}${BLUE}▸ %s${RESET}\n" "$1"; }
+step() { printf "\n${BOLD}${FG_IT}▸ %s${RESET}\n" "$1"; }
 
 # ── Arrow-key menu ──────────────────────────────────────────────────
 # Usage: menu_select result_var "prompt" "option1" "option2" ...
@@ -46,7 +45,7 @@ menu_select() {
   _draw_menu() {
     for i in "${!options[@]}"; do
       if [ "$i" -eq "$selected" ]; then
-        printf "  ${BG_BLUE}${WHITE} ▸ %s ${RESET}\n" "${options[$i]}"
+        printf "  ${BG_IT}${WHITE} ▸ %s ${RESET}\n" "${options[$i]}"
       else
         printf "    ${DIM}%s${RESET}\n" "${options[$i]}"
       fi
@@ -161,7 +160,7 @@ checkbox_select() {
 # ── Banner ──────────────────────────────────────────────────────────
 banner() {
   echo ""
-  printf "${BOLD}${BLUE}"
+  printf "${BOLD}${FG_IT}"
   echo "  ╔══════════════════════════════════════════╗"
   echo "  ║     Iterators AI Skills Installer        ║"
   echo "  ╚══════════════════════════════════════════╝"
@@ -354,7 +353,7 @@ cmd_init() {
 
   # Summary
   echo ""
-  printf "${BOLD}${GREEN}"
+  printf "${BOLD}${FG_IT}"
   echo "  ╔══════════════════════════════════════════╗"
   echo "  ║              All done!                   ║"
   echo "  ╚══════════════════════════════════════════╝"
@@ -420,7 +419,7 @@ cmd_update() {
   write_version_marker "$tools" "$scope"
 
   echo ""
-  printf "${BOLD}${GREEN}"
+  printf "${BOLD}${FG_IT}"
   echo "  ╔══════════════════════════════════════════╗"
   echo "  ║              Updated!                    ║"
   echo "  ╚══════════════════════════════════════════╝"
