@@ -60,13 +60,13 @@ menu_select() {
     case "$key" in
       $'\x1b')
         # Read escape sequence
-        read -rsn2 seq
+        read -rsn2 -t 0.1 seq
         case "$seq" in
           '[A') # Up
-            ((selected > 0)) && ((selected--))
+            ((selected > 0)) && ((selected--)) || true
             ;;
           '[B') # Down
-            ((selected < count - 1)) && ((selected++))
+            ((selected < count - 1)) && ((selected++)) || true
             ;;
         esac
         ;;
@@ -124,10 +124,10 @@ checkbox_select() {
     IFS= read -rsn1 key
     case "$key" in
       $'\x1b')
-        read -rsn2 seq
+        read -rsn2 -t 0.1 seq
         case "$seq" in
-          '[A') ((cursor > 0)) && ((cursor--)) ;;
-          '[B') ((cursor < count - 1)) && ((cursor++)) ;;
+          '[A') ((cursor > 0)) && ((cursor--)) || true ;;
+          '[B') ((cursor < count - 1)) && ((cursor++)) || true ;;
         esac
         ;;
       ' ')
@@ -224,7 +224,7 @@ tool_dir_for() {
   local tool="$1"
   case "$tool" in
     claude)  echo "$BASE_DIR/.claude" ;;
-    copilot) echo "$BASE_DIR/.github/copilot" ;;
+    copilot) echo "$BASE_DIR/.github" ;;
     cursor)  echo "$BASE_DIR/.cursor" ;;
     codex)   echo "$BASE_DIR/.agents" ;;
   esac

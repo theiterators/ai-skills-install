@@ -68,7 +68,7 @@ function Get-ToolDir {
     param([string]$Tool)
     switch ($Tool) {
         "claude"  { return Join-Path $script:BaseDir ".claude" }
-        "copilot" { return Join-Path $script:BaseDir ".github\copilot" }
+        "copilot" { return Join-Path $script:BaseDir ".github" }
         "cursor"  { return Join-Path $script:BaseDir ".cursor" }
         "codex"   { return Join-Path $script:BaseDir ".agents" }
     }
