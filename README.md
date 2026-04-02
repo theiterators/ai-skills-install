@@ -30,7 +30,7 @@ bash <(curl -sL https://raw.githubusercontent.com/theiterators/ai-skills-install
 3. Asks which tools to install for (Claude Code, GitHub Copilot, Cursor, Codex)
 4. Copies skills, references, and scripts to the selected tool directories:
    - Claude Code → `.claude/`
-   - GitHub Copilot → `.github/copilot/`
+   - GitHub Copilot → `.github/`
    - Cursor → `.cursor/`
    - Codex → `.agents/`
 5. Saves version marker to `.iterators/ai-skills-version.json` (in home dir or project dir)
