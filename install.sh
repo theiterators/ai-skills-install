@@ -170,10 +170,19 @@ banner() {
 
 # ── Core functions ──────────────────────────────────────────────────
 clone_repo() {
+  local err
   if command -v gh &>/dev/null; then
-    gh repo clone "$REPO" "$TMPDIR" -- --depth=1 -q 2>/dev/null
+    if ! err=$(gh repo clone "$REPO" "$TMPDIR" -- --depth=1 -q 2>&1); then
+      fail "Failed to clone via gh: $err"
+      rm -rf "$TMPDIR"
+      exit 1
+    fi
   elif command -v git &>/dev/null; then
-    git clone --depth=1 -q "git@github.com:${REPO}.git" "$TMPDIR" 2>/dev/null
+    if ! err=$(git clone --depth=1 -q "git@github.com:${REPO}.git" "$TMPDIR" 2>&1); then
+      fail "Failed to clone via git: $err"
+      rm -rf "$TMPDIR"
+      exit 1
+    fi
   else
     printf "  ${RED}ERROR:${RESET} gh or git is required.\n"
     printf "  Install gh: ${CYAN}https://cli.github.com${RESET}\n"
