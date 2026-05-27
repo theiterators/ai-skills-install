@@ -5,11 +5,13 @@ Public installer for [theiterators/ai-skills](https://github.com/theiterators/ai
 ## Install
 
 **macOS / Linux:**
+
 ```bash
 bash <(curl -sL https://raw.githubusercontent.com/theiterators/ai-skills-install/main/install.sh)
 ```
 
 **Windows (PowerShell):**
+
 ```powershell
 irm https://raw.githubusercontent.com/theiterators/ai-skills-install/main/install.ps1 | iex
 ```
@@ -19,6 +21,11 @@ irm https://raw.githubusercontent.com/theiterators/ai-skills-install/main/instal
 ```bash
 bash <(curl -sL https://raw.githubusercontent.com/theiterators/ai-skills-install/main/install.sh) update
 bash <(curl -sL https://raw.githubusercontent.com/theiterators/ai-skills-install/main/install.sh) doctor
+```
+
+```fish
+ curl -sL https://raw.githubusercontent.com/theiterators/ai-skills-install/main/install.sh | bash -s update
+ curl -sL https://raw.githubusercontent.com/theiterators/ai-skills-install/main/install.sh | bash -s doctor
 ```
 
 ## How it works
