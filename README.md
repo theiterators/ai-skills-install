@@ -17,12 +17,12 @@ irm https://raw.githubusercontent.com/theiterators/ai-skills-install/main/instal
 ```
 
 ## Update / Doctor
-
+bash
 ```bash
 bash <(curl -sL https://raw.githubusercontent.com/theiterators/ai-skills-install/main/install.sh) update
 bash <(curl -sL https://raw.githubusercontent.com/theiterators/ai-skills-install/main/install.sh) doctor
 ```
-
+fish
 ```fish
  curl -sL https://raw.githubusercontent.com/theiterators/ai-skills-install/main/install.sh | bash -s update
  curl -sL https://raw.githubusercontent.com/theiterators/ai-skills-install/main/install.sh | bash -s doctor
